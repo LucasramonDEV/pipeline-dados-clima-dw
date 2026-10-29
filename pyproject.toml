@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipeline-clima-dw"
+version = "1.0.0"
+description = "Pipeline ETL/ELT de Dados Climáticos das Capitais Brasileiras com Modelagem Dimensional (Star Schema), PostgreSQL e Orquestração Prefect/Airflow"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Lucas Ramon", email = "lucasramons@gmail.com" }
+]
+dependencies = [
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "pyarrow>=15.0.0",
+    "tabulate>=0.9.0",
+    "requests>=2.31.0",
+    "SQLAlchemy>=2.0.25",
+    "psycopg2-binary>=2.9.9",
+    "prefect>=3.0.0",
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.6.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

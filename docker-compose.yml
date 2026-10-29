@@ -1,0 +1,64 @@
+services:
+  postgres-dw:
+    image: postgres:16-alpine
+    container_name: clima_postgres_dw
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-clima_dw}
+      POSTGRES_USER: ${POSTGRES_USER:-dw_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dw_password_2026}
+      TZ: America/Sao_Paulo
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata_clima_dw:/var/lib/postgresql/data
+      - ./sql/01_init_dw_schema.sql:/docker-entrypoint-initdb.d/01_init_dw_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dw_user} -d ${POSTGRES_DB:-clima_dw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    container_name: clima_prefect_server
+    restart: unless-stopped
+    command: prefect server start --host 0.0.0.0 --port 4200
+    ports:
+      - "4200:4200"
+    environment:
+      PREFECT_UI_API_URL: http://localhost:4200/api
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_SERVER_API_PORT: 4200
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  etl-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clima_etl_pipeline
+    depends_on:
+      postgres-dw:
+        condition: service_healthy
+      prefect-server:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres-dw
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-clima_dw}
+      POSTGRES_USER: ${POSTGRES_USER:-dw_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dw_password_2026}
+      POSTGRES_SCHEMA: dw
+      PREFECT_API_URL: http://prefect-server:4200/api
+      LOG_LEVEL: INFO
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: ["python", "-m", "src.main"]
+
+volumes:
+  pgdata_clima_dw:
